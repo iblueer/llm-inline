@@ -34,4 +34,4 @@ if [[ -z "$LLMI_ZSH_HINT_SHOWN" ]]; then
   export LLMI_ZSH_HINT_SHOWN=1
   echo "llmi: 已启用 Tab 快捷粘贴（空行按 Tab 自动插入上次建议命令）"
 fi
-fi
+
