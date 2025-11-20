@@ -30,7 +30,7 @@ __llmi_insert_or_tab() {
 bind -x '"\C-i":__llmi_insert_or_tab'
 
 # One-time hint
-if [[ -z "$LLMI_BASH_HINT_SHOWN" ]]; then
-  export LLMI_BASH_HINT_SHOWN=1
-  echo "llmi: 已启用 Tab 快捷粘贴（空行按 Tab 自动插入上次建议命令）"
-fi
+# if [[ -z "$LLMI_BASH_HINT_SHOWN" ]]; then
+#   export LLMI_BASH_HINT_SHOWN=1
+#   echo "llmi: 已启用 Tab 快捷粘贴（空行按 Tab 自动插入上次建议命令）"
+# fi

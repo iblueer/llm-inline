@@ -30,8 +30,8 @@ autoload -Uz add-zsh-hook 2>/dev/null || true
 typeset -f add-zsh-hook >/dev/null 2>&1 && add-zsh-hook precmd _llmi_bind_tab
 
 # Optional: print a hint once per shell session
-if [[ -z "$LLMI_ZSH_HINT_SHOWN" ]]; then
-  export LLMI_ZSH_HINT_SHOWN=1
-  echo "llmi: 已启用 Tab 快捷粘贴（空行按 Tab 自动插入上次建议命令）"
-fi
+# if [[ -z "$LLMI_ZSH_HINT_SHOWN" ]]; then
+#   export LLMI_ZSH_HINT_SHOWN=1
+#   echo "llmi: 已启用 Tab 快捷粘贴（空行按 Tab 自动插入上次建议命令）"
+# fi
 
