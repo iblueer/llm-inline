@@ -2,15 +2,62 @@
 """
 LLM Inline - OpenAI-compatible command line LLM interface
 
-Usage: llmi ask "your question here"
+Usage: llmi ask "your question here" [--file file_path]
 """
 
 import os
 import sys
 import json
 import subprocess
+import argparse
 from openai import OpenAI
 from pathlib import Path
+
+
+def read_file_content(file_path: str) -> dict:
+    """
+    读取文件内容，返回文件信息字典
+    支持相对路径转换
+    """
+    try:
+        # 支持相对路径
+        abs_path = Path(file_path).expanduser().resolve()
+        
+        if not abs_path.exists():
+            return {"error": f"文件不存在: {file_path}"}
+        
+        if not abs_path.is_file():
+            return {"error": f"路径不是文件: {file_path}"}
+        
+        # 检查文件大小，避免上传过大文件
+        file_size = abs_path.stat().st_size
+        if file_size > 10 * 1024 * 1024:  # 10MB limit
+            return {"error": f"文件过大，超过10MB限制: {file_path}"}
+        
+        # 读取文件内容
+        try:
+            with open(abs_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            is_binary = False
+        except (UnicodeDecodeError, Exception):
+            # 如果是二进制文件，读取为base64
+            import base64
+            with open(abs_path, 'rb') as f:
+                binary_content = f.read()
+            content = base64.b64encode(binary_content).decode('utf-8')
+            is_binary = True
+        
+        return {
+            "success": True,
+            "path": str(abs_path),
+            "filename": abs_path.name,
+            "content": content,
+            "size": file_size,
+            "is_binary": is_binary
+        }
+        
+    except Exception as e:
+        return {"error": f"读取文件失败: {str(e)}"}
 
 
 def get_shell_info():
@@ -23,16 +70,34 @@ def get_shell_info():
     }
 
 
-def create_structured_prompt(user_input: str, shell_info: dict) -> list:
+def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict = None) -> list:
     """
     创建结构化的提示信息
     要求LLM以特定格式返回可直接使用的命令
     """
+    
+    # 构建系统提示
     system_prompt = f"""你是一个命令行助手，帮助用户解决shell命令相关问题。
 
 当前环境:
 - Shell: {shell_info['shell']}
-- 当前目录: {shell_info['current_directory']}
+- 当前目录: {shell_info['current_directory']}"""
+
+    # 如果有文件附件，添加文件信息
+    if file_info and file_info.get('success'):
+        file_info_text = f"""
+
+文件附件信息:
+- 文件名: {file_info['filename']}
+- 文件路径: {file_info['path']}
+- 文件大小: {file_info['size']} bytes
+- 是否为二进制文件: {'是' if file_info['is_binary'] else '否'}
+- 文件内容: 
+{file_info['content'] if not file_info['is_binary'] else '[二进制内容，已编码为base64]'}"""
+        
+        system_prompt += file_info_text
+    
+    system_prompt += """
 
 如果用户的问题是关于如何输入bash/zsh命令的，你必须以以下格式返回可以直接使用的命令:
 ```command
@@ -69,12 +134,19 @@ def call_llm(messages: list) -> str:
             base_url=os.environ.get('LLM_BASE_URL')
         )
 
-        response = client.chat.completions.create(
-            model=os.environ.get('LLM_MODEL_NAME', 'doubao-seed-1.6-flash'),
-            messages=messages,
-            max_tokens=1000,
-            temperature=0.3
-        )
+        # 构建API参数
+        api_params = {
+            "model": os.environ.get('LLM_MODEL_NAME', 'doubao-seed-1.6-flash'),
+            "messages": messages,
+            "max_tokens": 1000,
+            "temperature": 0.3
+        }
+
+        # 如果有文件附件，直接在系统提示中包含文件内容（不使用image_url格式）
+        # 我们已经在create_structured_prompt中处理了文件内容
+        # 这里不再需要特殊处理
+
+        response = client.chat.completions.create(**api_params)
 
         return response.choices[0].message.content
 
@@ -108,21 +180,46 @@ def ensure_llm_env() -> None:
 
 
 def main():
-    # 检查命令行参数
-    if len(sys.argv) < 3 or sys.argv[1] != "ask":
-        print("Usage: llmi ask \"your question here\"")
+    # 使用argparse解析命令行参数
+    parser = argparse.ArgumentParser(
+        description='LLM Inline - OpenAI-compatible command line LLM interface'
+    )
+    parser.add_argument('ask', help='Ask a question to LLM')
+    parser.add_argument('question', nargs='*', help='Your question to the LLM')
+    parser.add_argument('--file', '-f', help='File path to attach to the query')
+    
+    args = parser.parse_args()
+    
+    # 检查是否有问题
+    if not args.question:
+        print("❌ 请提供问题")
+        print("Usage: llmi ask \"your question here\" [--file file_path]")
         sys.exit(1)
-
-    user_input = " ".join(sys.argv[2:]).strip()
-
+    
+    user_input = " ".join(args.question).strip()
+    file_path = args.file
+    
     print(f"🤔 用户提问: {user_input}")
+    if file_path:
+        print(f"📎 附件文件: {file_path}")
     print()
 
     # 获取shell信息
     shell_info = get_shell_info()
+    
+    # 处理文件附件
+    file_info = None
+    if file_path:
+        print("📂 正在读取文件...")
+        file_info = read_file_content(file_path)
+        if file_info.get('error'):
+            print(f"❌ {file_info['error']}")
+            sys.exit(1)
+        print(f"✅ 文件读取成功: {file_info['filename']} ({file_info['size']} bytes)")
+        print()
 
     # 创建结构化提示
-    messages = create_structured_prompt(user_input, shell_info)
+    messages = create_structured_prompt(user_input, shell_info, file_info)
 
     # 确保环境
     ensure_llm_env()
