@@ -5,7 +5,7 @@ set -eu
 echo ">>> 开始卸载 llm-inline ..."
 
 INSTALL_ROOT="$HOME/.llmi"
-PROJECT_ID="${LLM_PROJECT_ID:-maemolee/llm-inline}"
+PROJECT_ID="${LLM_PROJECT_ID:-iblueer/llm-inline}"
 BEGIN_MARK="# >>> ${PROJECT_ID} BEGIN (managed) >>>"
 END_MARK="# <<< ${PROJECT_ID} END   <<<"
 

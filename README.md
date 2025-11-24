@@ -97,7 +97,7 @@ Skills are community-created extensions that add new functionality to llmi.
 
 ```bash
 # Install a skill from GitHub
-llmi install https://raw.githubusercontent.com/user/skills/main/translate.json
+llmi install https://raw.githubusercontent.com/iblueer/llm-inline/main/skill-examples/translate/skill.json
 
 # List installed skills
 llmi list
@@ -106,6 +106,12 @@ llmi list
 llmi translate file.txt en
 llmi use python-tool --arg value
 ```
+
+### Skill Examples
+Check the [skill-examples/](./skill-examples/) directory for complete skill examples and development guides.
+
+- **translate**: Translate files using LLM
+- More examples coming soon...
 
 ### Creating Skills
 A skill consists of two parts:

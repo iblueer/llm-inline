@@ -17,7 +17,7 @@ echo ">>> 开始安装 llm-inline ..."
 
 # ===== Step 0. 基础配置与目录 =====
 RAW_HOST="${GITHUB_RAW_BASE:-raw.githubusercontent.com}"
-REPO_PATH="maemolee/llm-inline"
+REPO_PATH="iblueer/llm-inline"
 BRANCH="main"
 BASE_URL="https://${RAW_HOST}/${REPO_PATH}/${BRANCH}"
 
@@ -31,7 +31,7 @@ case "$SHELL_NAME" in
 esac
 
 # 项目标记（可通过 LLM_PROJECT_ID 覆盖）
-PROJECT_ID="${LLM_PROJECT_ID:-maemolee/llm-inline}"
+PROJECT_ID="${LLM_PROJECT_ID:-iblueer/llm-inline}"
 BEGIN_MARK="# >>> ${PROJECT_ID} BEGIN (managed) >>>"
 END_MARK="# <<< ${PROJECT_ID} END   <<<"
 

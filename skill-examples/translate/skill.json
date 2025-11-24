@@ -1,0 +1,26 @@
+{
+  "name": "translate",
+  "description": "使用LLM翻译文件内容",
+  "version": "1.0.0",
+  "author": "llmi-example",
+  "parameters": [
+    {
+      "name": "file",
+      "type": "file",
+      "required": true,
+      "description": "要翻译的文件路径"
+    },
+    {
+      "name": "target_lang",
+      "type": "string",
+      "default": "en",
+      "description": "目标语言代码 (如: en, zh, ja, fr等)"
+    },
+    {
+      "name": "source_lang",
+      "type": "string",
+      "description": "源语言代码 (不指定则自动检测)"
+    }
+  ],
+  "handler": "translate.py"
+}
