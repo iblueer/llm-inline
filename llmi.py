@@ -454,19 +454,68 @@ def ensure_llm_env() -> None:
         sys.exit(2)
 
 
+def show_help():
+    """显示帮助信息"""
+    help_text = """
+llm-inline - OpenAI-compatible command line LLM interface
+
+Usage:
+  llmi "question" [--file path]      # 直接询问
+  llmi ask "question" [--file path]  # 兼容模式
+  llmi install <url>               # 安装技能
+  llmi list                         # 列出技能
+  llmi use <skill> [args...]        # 使用技能
+  llmi translate <file> [args...]   # 翻译技能
+
+Skill Commands:
+  llmi translate <file> [lang] [source]  # 翻译文件
+
+Options:
+  -h, --help      # 显示此帮助信息
+  -f, --file path  # 指定文件
+
+Environment Variables:
+  LLM_API_KEY     # API密钥
+  LLM_BASE_URL    # API基础URL
+  LLM_MODEL_NAME  # 模型名称
+
+Examples:
+  llmi "如何查看当前目录？"
+  llmi translate document.txt ja
+  llmi install https://example.com/skill.json
+
+Skills:
+"""
+    print(help_text)
+    
+    # 显示已安装的技能
+    try:
+        skills = list_skills()
+        if skills:
+            for skill in skills:
+                print(f"  {skill['name']} - {skill['description']}")
+                if 'parameters' in skill and skill['parameters']:
+                    for param in skill['parameters']:
+                        required = "必需" if param.get('required', False) else "可选"
+                        default = f" (默认: {param['default']})" if 'default' in param else ""
+                        print(f"    {param['name']}: {param['description']} [{required}]{default}")
+        else:
+            print("  暂无已安装的技能")
+    except Exception:
+        print("  技能加载失败")
+
+
 def main():
     import sys
     
+    # 检查help参数
+    if len(sys.argv) == 2 and sys.argv[1] in ['-h', '--help']:
+        show_help()
+        sys.exit(0)
+    
     # 检查是否有参数
     if len(sys.argv) < 2:
-        print("❌ 请提供问题或指令")
-        print("Usage:")
-        print("  llmi \"your question here\" [--file file_path]  # 询问问题")
-        print("  llmi ask \"your question here\" [--file file_path]  # 询问问题(兼容模式)")
-        print("  llmi install <url>  # 安装技能")
-        print("  llmi list  # 列出已安装的技能")
-        print("  llmi use <tool> [args]  # 使用工具")
-        print("  llmi translate <file> [args]  # 翻译文件")
+        show_help()
         sys.exit(1)
     
     # 获取所有参数
