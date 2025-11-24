@@ -464,11 +464,6 @@ Usage:
   llmi ask "question" [--file path]  # 兼容模式
   llmi install <url>               # 安装技能
   llmi list                         # 列出技能
-  llmi use <skill> [args...]        # 使用技能
-  llmi translate <file> [args...]   # 翻译技能
-
-Skill Commands:
-  llmi translate <file> [lang] [source]  # 翻译文件
 
 Options:
   -h, --help      # 显示此帮助信息
@@ -481,8 +476,9 @@ Environment Variables:
 
 Examples:
   llmi "如何查看当前目录？"
-  llmi translate document.txt ja
+  llmi ask "如何查看当前目录？"
   llmi install https://example.com/skill.json
+  llmi list
 
 Skills:
 """
