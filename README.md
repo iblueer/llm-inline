@@ -114,6 +114,15 @@ Check the [skill-examples/](./skill-examples/) directory for complete skill exam
 - More examples coming soon...
 
 ### Creating Skills
+**设计理念：技能完全依赖llmi的基础设施**
+
+llm-inline采用插件架构，让技能开发者专注于业务逻辑，无需关心LLM接入细节：
+
+- **llmi负责LLM接入**: 统一处理API密钥、模型选择、网络连接等
+- **技能专注功能**: 开发者只需实现具体的prompt处理和业务逻辑
+- **环境共享**: 所有技能共享同一套LLM环境变量
+- **简化开发**: 大幅降低技能开发门槛
+
 A skill consists of two parts:
 
 1. **skill.json** - Configuration and metadata
@@ -149,15 +158,33 @@ A skill consists of two parts:
 #!/usr/bin/env python3
 
 def main(args):
-    # Handle skill logic here
+    # 处理技能逻辑
     file_path = args[0]
     target_lang = args[1] if len(args) > 1 else "en"
     
-    # Your implementation
-    print(f"Translating {file_path} to {target_lang}")
+    # 构建prompt
+    prompt = f"请将以下内容翻译成{target_lang}：\n\n{content}"
     
+    # 通过llmi环境调用LLM
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=os.environ.get('LLM_API_KEY'),
+        base_url=os.environ.get('LLM_BASE_URL')
+    )
+    
+    response = client.chat.completions.create(
+        model=os.environ.get('LLM_MODEL_NAME'),
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    print(response.choices[0].message.content)
     return True
 ```
+
+**关键点**：
+- 技能依赖 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL_NAME` 环境变量
+- llmi自动提供这些环境，技能无需关心LLM来源
+- 开发者只需专注prompt和业务逻辑
 
 ### Skill Directory Structure
 ```
