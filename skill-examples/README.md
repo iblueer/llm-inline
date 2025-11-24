@@ -76,34 +76,37 @@ cd my-skill
 定义技能的基本信息和参数结构。
 
 ### 3. 实现 handler.py 处理脚本
-**关键原则：完全依赖llmi环境**
+**关键原则：完全依赖llmi运行时环境**
 
 ```python
 #!/usr/bin/env python3
-import os
 
 def main(args):
+    # 导入llmi运行时API
+    import llmi_runtime
+    
     # 解析参数
-    input_file = args[0]
+    file_path = args[0]
+    target_lang = args[1] if len(args) > 1 else "en"
     
     # 构建业务prompt
-    prompt = f"请处理这个文件: {input_file}"
+    prompt = f"请将以下内容翻译成{target_lang}：\n\n{content}"
     
-    # 直接使用llmi提供的LLM环境
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=os.environ.get('LLM_API_KEY'),      # llmi提供
-        base_url=os.environ.get('LLM_BASE_URL')      # llmi提供
+    # 通过llmi调用LLM（完全透明！）
+    translation = llmi_runtime.call_llm(
+        prompt,
+        system_prompt="你是一个专业的翻译助手，请准确翻译用户提供的文本，保持原有的格式和结构。"
     )
     
-    response = client.chat.completions.create(
-        model=os.environ.get('LLM_MODEL_NAME'),        # llmi提供
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    print(response.choices[0].message.content)
+    print(translation)
     return True
 ```
+
+**架构优势**：
+- **零配置代码**: 技能无需检查环境变量或初始化客户端
+- **统一接口**: 所有技能使用相同的 `llmi_runtime.call_llm()` 
+- **参数透传**: `max_tokens`, `temperature` 等参数可直接传递
+- **环境透明**: 完全不知道LLM来源，只管调用
 
 ### 4. 上传到GitHub并分享
 将技能上传到GitHub，用户就可以通过以下方式安装：
@@ -113,10 +116,12 @@ llmi install https://raw.githubusercontent.com/username/repo/main/skill-name/ski
 ```
 
 ### ✅ 开发优势
-- **零配置**: 无需处理API密钥、模型选择
-- **统一体验**: 所有技能使用相同的LLM后端
-- **环境安全**: llmi统一管理敏感信息
-- **快速开发**: 专注业务逻辑，5分钟即可完成技能
+- **零配置代码**: 无需处理API密钥、模型选择、环境检查
+- **透明LLM接口**: 调用 `llmi_runtime.call_llm()` 即可
+- **统一体验**: 所有技能使用相同的LLM后端和配置
+- **环境安全**: llmi统一管理敏感信息，技能无权限问题
+- **极简开发**: 专注业务逻辑，5分钟即可完成技能
+- **参数透传**: `max_tokens`, `temperature` 等LLM参数可直接传递
 
 ## 分享技能
 

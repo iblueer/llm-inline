@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """
 翻译技能处理脚本
-使用LLM翻译文件内容
+专注于业务逻辑，LLM接入完全交给llmi
 """
 
-import os
 import sys
-import json
 from pathlib import Path
 
 
 def main(args):
     """翻译技能的主函数"""
+    # 导入llmi运行时API
+    import llmi_runtime
+    
     try:
-        from openai import OpenAI
-        
         # 解析参数
         if len(args) == 0:
             print("❌ 请提供要翻译的文件")
@@ -47,40 +46,21 @@ def main(args):
             print("⚠️ 文件内容为空")
             return True
         
-        # 检查LLM环境
-        if not os.environ.get('LLM_API_KEY') or not os.environ.get('LLM_BASE_URL'):
-            print("❌ 缺少LLM环境变量，请先运行: source llm-switch")
-            return False
-        
         print(f"🔍 正在翻译文件: {abs_path.name}")
         print(f"🌐 目标语言: {target_lang}")
         if source_lang:
             print(f"🌐 源语言: {source_lang}")
         print()
         
-        # 构建翻译提示
+        # 构建翻译prompt（纯业务逻辑）
         if source_lang:
             prompt = f"请将以下{source_lang}内容翻译成{target_lang}，保持原文格式：\n\n{content}"
         else:
             prompt = f"请将以下内容翻译成{target_lang}，保持原文格式：\n\n{content}"
         
-        # 调用LLM
-        client = OpenAI(
-            api_key=os.environ.get('LLM_API_KEY'),
-            base_url=os.environ.get('LLM_BASE_URL')
-        )
-        
-        response = client.chat.completions.create(
-            model=os.environ.get('LLM_MODEL_NAME', 'doubao-seed-1.6-flash'),
-            messages=[
-                {"role": "system", "content": "你是一个专业的翻译助手，请准确翻译用户提供的文本，保持原有的格式和结构。"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=4000,
-            temperature=0.3
-        )
-        
-        translation = response.choices[0].message.content
+        # 通过llmi调用LLM（完全透明！）
+        system_prompt = "你是一个专业的翻译助手，请准确翻译用户提供的文本，保持原有的格式和结构。"
+        translation = llmi_runtime.call_llm(prompt, system_prompt)
         
         print("📝 翻译结果:")
         print("=" * 50)

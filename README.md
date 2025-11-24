@@ -158,33 +158,29 @@ A skill consists of two parts:
 #!/usr/bin/env python3
 
 def main(args):
-    # 处理技能逻辑
+    # 解析参数
     file_path = args[0]
     target_lang = args[1] if len(args) > 1 else "en"
     
     # 构建prompt
     prompt = f"请将以下内容翻译成{target_lang}：\n\n{content}"
     
-    # 通过llmi环境调用LLM
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=os.environ.get('LLM_API_KEY'),
-        base_url=os.environ.get('LLM_BASE_URL')
+    # 通过llmi运行时API调用LLM（完全透明！）
+    import llmi_runtime
+    translation = llmi_runtime.call_llm(
+        prompt,
+        system_prompt="你是一个专业的翻译助手，请准确翻译用户提供的文本，保持原有的格式和结构。"
     )
     
-    response = client.chat.completions.create(
-        model=os.environ.get('LLM_MODEL_NAME'),
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    print(response.choices[0].message.content)
+    print(translation)
     return True
 ```
 
 **关键点**：
-- 技能依赖 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL_NAME` 环境变量
-- llmi自动提供这些环境，技能无需关心LLM来源
-- 开发者只需专注prompt和业务逻辑
+- 技能**无需关心** `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL_NAME` 等环境变量
+- llmi**自动提供**LLM环境，技能通过 `llmi_runtime.call_llm()` 调用
+- 开发者**只需专注**prompt和业务逻辑
+- 完全**透明的LLM接口**，屏蔽所有接入细节
 
 ### Skill Directory Structure
 ```

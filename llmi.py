@@ -315,6 +315,9 @@ def execute_skill(skill_name: str, args: list) -> bool:
                     module_name = config['handler'].replace('.py', '')
                     module = __import__(module_name)
                     
+                    # 注入LLM运行时环境
+                    import llmi_runtime
+                    
                     # 调用main函数
                     if hasattr(module, 'main'):
                         result = module.main(args)
