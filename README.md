@@ -158,15 +158,25 @@ A skill consists of two parts:
 #!/usr/bin/env python3
 
 def main(args):
-    # 解析参数
-    file_path = args[0]
+    # 导入llmi运行时API
+    import llmi_runtime
+    
+    # 解析参数（文件可能已由llmi预处理）
+    file_param = args[0]
     target_lang = args[1] if len(args) > 1 else "en"
+    
+    # 获取文件内容（llmi统一处理）
+    file_info = llmi_runtime.get_file_content(file_param)
+    if 'error' in file_info:
+        print(f"❌ {file_info['error']}")
+        return False
+    
+    content = file_info['content']
     
     # 构建prompt
     prompt = f"请将以下内容翻译成{target_lang}：\n\n{content}"
     
     # 通过llmi运行时API调用LLM（完全透明！）
-    import llmi_runtime
     translation = llmi_runtime.call_llm(
         prompt,
         system_prompt="你是一个专业的翻译助手，请准确翻译用户提供的文本，保持原有的格式和结构。"
@@ -177,10 +187,10 @@ def main(args):
 ```
 
 **关键点**：
-- 技能**无需关心** `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL_NAME` 等环境变量
-- llmi**自动提供**LLM环境，技能通过 `llmi_runtime.call_llm()` 调用
-- 开发者**只需专注**prompt和业务逻辑
-- 完全**透明的LLM接口**，屏蔽所有接入细节
+- **文件由llmi预处理**: 技能无需处理文件I/O、编码检测等
+- **统一文件接口**: 使用 `llmi_runtime.get_file_content()` 获取预处理的文件内容
+- **透明的LLM接口**: 调用 `llmi_runtime.call_llm()` 即可
+- **专注业务逻辑**: 开发者只需关心prompt和结果处理
 
 ### Skill Directory Structure
 ```

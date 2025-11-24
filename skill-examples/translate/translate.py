@@ -20,33 +20,26 @@ def main(args):
             print("Usage: llmi translate <file> [target_lang] [source_lang]")
             return False
         
-        file_path = args[0]
+        # 获取文件参数（可能已由llmi预处理）
+        file_param = args[0]
+        file_info = llmi_runtime.get_file_content(file_param)
+        
+        if 'error' in file_info:
+            print(f"❌ {file_info['error']}")
+            return False
+        
         target_lang = args[1] if len(args) > 1 else "en"
         source_lang = args[2] if len(args) > 2 else None
         
-        # 检查文件
-        abs_path = Path(file_path).expanduser().resolve()
-        if not abs_path.exists():
-            print(f"❌ 文件不存在: {file_path}")
-            return False
-        
-        if not abs_path.is_file():
-            print(f"❌ 路径不是文件: {file_path}")
-            return False
-        
-        # 读取文件内容
-        try:
-            with open(abs_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-        except UnicodeDecodeError:
-            print("❌ 不支持翻译二进制文件")
-            return False
+        # 从预处理后的文件信息中获取内容
+        content = file_info['content']
+        file_name = file_info['name']
         
         if not content.strip():
             print("⚠️ 文件内容为空")
             return True
         
-        print(f"🔍 正在翻译文件: {abs_path.name}")
+        print(f"🔍 正在翻译文件: {file_name}")
         print(f"🌐 目标语言: {target_lang}")
         if source_lang:
             print(f"🌐 源语言: {source_lang}")
@@ -67,8 +60,10 @@ def main(args):
         print(translation)
         print("=" * 50)
         
-        # 保存翻译结果
-        output_path = abs_path.parent / f"{abs_path.stem}_{target_lang}{abs_path.suffix}"
+        # 保存翻译结果（使用原始文件名）
+        from pathlib import Path
+        original_path = Path(file_info['path'])
+        output_path = original_path.parent / f"{original_path.stem}_{target_lang}{original_path.suffix}"
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(translation)
         

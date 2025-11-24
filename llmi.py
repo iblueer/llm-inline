@@ -309,6 +309,9 @@ def execute_skill(skill_name: str, args: list) -> bool:
         if 'handler' in config:
             handler_file = skill_dir / config['handler']
             if handler_file.exists():
+                # 预处理文件参数
+                processed_args = preprocess_skill_args(config, args)
+                
                 # 动态导入并执行Python脚本
                 sys.path.insert(0, str(skill_dir))
                 try:
@@ -320,7 +323,7 @@ def execute_skill(skill_name: str, args: list) -> bool:
                     
                     # 调用main函数
                     if hasattr(module, 'main'):
-                        result = module.main(args)
+                        result = module.main(processed_args)
                         return result if isinstance(result, bool) else True
                     else:
                         print(f"❌ 技能脚本缺少main函数")
@@ -355,6 +358,90 @@ def execute_skill(skill_name: str, args: list) -> bool:
     except Exception as e:
         print(f"❌ 执行技能失败: {e}")
         return False
+
+
+def preprocess_skill_args(config: dict, args: list) -> list:
+    """预处理技能参数，处理文件参数"""
+    import os
+    import base64
+    from pathlib import Path
+    
+    # 检查技能是否有文件参数
+    if not 'parameters' in config:
+        return args
+    
+    file_params = [p for p in config['parameters'] if p.get('type') == 'file']
+    if not file_params:
+        return args
+    
+    # 查找文件参数在args中的位置
+    processed_args = args.copy()
+    
+    for param in file_params:
+        param_name = param['name']
+        
+        # 查找文件参数的值
+        file_value = None
+        file_index = None
+        
+        # 通过位置参数查找（第一个参数通常是文件）
+        # 对于translate技能，第一个参数就是文件
+        if len(args) > 0:
+            file_value = args[0]
+            file_index = 0
+        
+        # 如果找到文件路径，预处理文件内容
+        if file_value:
+            try:
+                # 支持相对路径
+                abs_path = Path(file_value).expanduser().resolve()
+                
+                if not abs_path.exists():
+                    print(f"❌ 文件不存在: {file_value}")
+                    return args
+                
+                if not abs_path.is_file():
+                    print(f"❌ 路径不是文件: {file_value}")
+                    return args
+                
+                # 检查文件大小，避免上传过大文件
+                file_size = abs_path.stat().st_size
+                if file_size > 10 * 1024 * 1024:  # 10MB limit
+                    print(f"❌ 文件过大，超过10MB限制: {file_value}")
+                    return args
+                
+                # 读取文件内容
+                try:
+                    with open(abs_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    is_binary = False
+                except (UnicodeDecodeError, Exception):
+                    # 如果是二进制文件，读取为base64
+                    with open(abs_path, 'rb') as f:
+                        binary_content = f.read()
+                    content = base64.b64encode(binary_content).decode('utf-8')
+                    is_binary = True
+                
+                # 构建文件信息字典
+                file_info = {
+                    'path': str(abs_path),
+                    'name': abs_path.name,
+                    'size': file_size,
+                    'content': content,
+                    'is_binary': is_binary
+                }
+                
+                # 将文件路径替换为文件信息字典
+                # 使用特殊标记，让技能知道这是预处理的文件内容
+                processed_args[file_index] = file_info
+                
+                print(f"📎 已预处理文件: {abs_path.name} ({file_size/1024:.1f}KB)")
+                
+            except Exception as e:
+                print(f"❌ 预处理文件失败: {e}")
+                return args
+    
+    return processed_args
 
 
 def ensure_llm_env() -> None:

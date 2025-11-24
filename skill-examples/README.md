@@ -85,9 +85,17 @@ def main(args):
     # 导入llmi运行时API
     import llmi_runtime
     
-    # 解析参数
-    file_path = args[0]
+    # 解析参数（文件可能已由llmi预处理）
+    file_param = args[0]
     target_lang = args[1] if len(args) > 1 else "en"
+    
+    # 获取文件内容（llmi统一处理）
+    file_info = llmi_runtime.get_file_content(file_param)
+    if 'error' in file_info:
+        print(f"❌ {file_info['error']}")
+        return False
+    
+    content = file_info['content']
     
     # 构建业务prompt
     prompt = f"请将以下内容翻译成{target_lang}：\n\n{content}"
@@ -103,6 +111,7 @@ def main(args):
 ```
 
 **架构优势**：
+- **文件统一处理**: llmi自动处理文件I/O、编码检测、大小限制
 - **零配置代码**: 技能无需检查环境变量或初始化客户端
 - **统一接口**: 所有技能使用相同的 `llmi_runtime.call_llm()` 
 - **参数透传**: `max_tokens`, `temperature` 等参数可直接传递

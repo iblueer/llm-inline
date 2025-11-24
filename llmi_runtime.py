@@ -89,3 +89,55 @@ def check_llm_env() -> bool:
     """检查LLM环境是否配置"""
     required_vars = ['LLM_API_KEY', 'LLM_BASE_URL']
     return all(os.environ.get(var) for var in required_vars)
+
+
+def get_file_content(arg_value) -> dict:
+    """
+    获取预处理后的文件内容
+    
+    Args:
+        arg_value: 参数值，可能是文件路径字符串或文件信息字典
+        
+    Returns:
+        文件信息字典，包含content等字段
+    """
+    # 如果是字典，说明已经由llmi预处理过
+    if isinstance(arg_value, dict):
+        return arg_value
+    
+    # 如果是字符串，按传统方式处理（向后兼容）
+    print("⚠️  检测到未预处理的文件参数，建议在技能配置中声明type='file'")
+    
+    # 传统文件读取逻辑
+    from pathlib import Path
+    import base64
+    
+    abs_path = Path(arg_value).expanduser().resolve()
+    
+    if not abs_path.exists():
+        return {'error': f"文件不存在: {arg_value}"}
+    
+    if not abs_path.is_file():
+        return {'error': f"路径不是文件: {arg_value}"}
+    
+    file_size = abs_path.stat().st_size
+    if file_size > 10 * 1024 * 1024:  # 10MB limit
+        return {'error': f"文件过大，超过10MB限制: {arg_value}"}
+    
+    try:
+        with open(abs_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        is_binary = False
+    except (UnicodeDecodeError, Exception):
+        with open(abs_path, 'rb') as f:
+            binary_content = f.read()
+        content = base64.b64encode(binary_content).decode('utf-8')
+        is_binary = True
+    
+    return {
+        'path': str(abs_path),
+        'name': abs_path.name,
+        'size': file_size,
+        'content': content,
+        'is_binary': is_binary
+    }
