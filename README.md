@@ -3,9 +3,31 @@
 OpenAI-compatible command line LLM interface powered by llm-switch environment variables.
 
 ## Installation
+
+### Online Installation (Recommended)
 ```bash
-# Activate the installation
-./activate.sh
+# Install from GitHub (one-liner)
+curl -fsSL https://raw.githubusercontent.com/maemolee/llm-inline/main/install.sh | sh
+
+# Or with custom GitHub mirror
+GITHUB_RAW_BASE=raw.fastgit.org curl -fsSL https://raw.githubusercontent.com/maemolee/llm-inline/main/install.sh | sh
+```
+
+### Local Installation
+```bash
+# Clone and install locally
+git clone https://github.com/maemolee/llm-inline.git
+cd llm-inline
+./install-locally.sh
+```
+
+### Uninstallation
+```bash
+# Uninstall online version
+curl -fsSL https://raw.githubusercontent.com/maemolee/llm-inline/main/uninstall.sh | sh
+
+# Or run locally if you have the repo
+./uninstall.sh
 ```
 
 ## Usage
