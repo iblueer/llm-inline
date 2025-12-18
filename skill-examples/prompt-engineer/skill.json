@@ -1,0 +1,15 @@
+{
+  "name": "prompt-engineer",
+  "description": "图像生成提示词工程师，将原始提示词整理为高约束、低歧义的可执行提示词",
+  "version": "1.0.0",
+  "author": "llmi-example",
+  "parameters": [
+    {
+      "name": "prompt",
+      "type": "string",
+      "required": true,
+      "description": "原始提示词文本"
+    }
+  ],
+  "handler": "prompt_engineer.py"
+}

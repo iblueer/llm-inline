@@ -48,6 +48,46 @@ llmi translate document.txt ja
 llmi translate document.txt fr en
 ```
 
+## prompt-engineer 技能示例
+
+`prompt-engineer/` 目录是一个图像生成提示词工程技能示例，基于 `prompt.md` 中的规则：
+
+### 功能说明
+该技能将用户提供的原始提示词整理、重构为一个高约束、低歧义、可被图像生成模型稳定遵循的提示词。
+
+### 安装示例
+```bash
+# 从本目录安装（测试用）
+llmi install file:///path/to/llm-inline/skill-examples/prompt-engineer/skill.json
+
+# 从GitHub安装（生产用）
+llmi install https://raw.githubusercontent.com/iblueer/llm-inline/main/skill-examples/prompt-engineer/skill.json
+```
+
+### 使用方法
+```bash
+# 优化单行提示词
+llmi prompt-engineer "一个美丽的女孩，穿着红色的裙子，在花园里"
+
+# 优化多行提示词（使用引号）
+llmi prompt-engineer "一只可爱的白色猫咪\n坐在柔软的垫子上\n阳光从窗户洒进来\n温馨的家庭氛围"
+```
+
+### 处理规则
+该技能严格遵循以下规则：
+1. **不新增**任何用户未明确提出的设计要素
+2. **不进行**审美发挥或补充创意
+3. 将**模糊描述**改写为明确、可执行的约束
+4. 将**否定式描述**改写为正向、枚举式描述
+5. **保留冲突**用【需要确认】标注，不自行假设
+
+### 输出结构
+优化后的提示词将按以下固定结构输出：
+- 【不可变规则】
+- 【构图与空间约束】
+- 【主体与结构约束】
+- 【风格与表现】
+
 ### 技能配置说明
 
 **skill.json** 字段说明：
