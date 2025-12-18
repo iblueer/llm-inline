@@ -542,50 +542,40 @@ def main():
                     user_input = user_input.replace(file_part, "").strip()
             except ValueError:
                 pass
-    elif first_arg in ['use', 'translate', 'list', 'install']:
-        # 技能相关指令
-        if first_arg == 'install':
-            # 安装技能
-            if len(args) < 2:
-                print("❌ install指令需要提供技能URL")
-                print("Usage: llmi install <skill_url>")
-                sys.exit(1)
-            
-            skill_url = args[1]
-            success = install_skill_from_url(skill_url)
-            sys.exit(0 if success else 1)
-            
-        elif first_arg == 'list':
-            # 列出已安装的技能
-            skills = list_skills()
-            if not skills:
-                print("📂 暂无已安装的技能")
-                print("使用 'llmi install <url>' 安装技能")
-            else:
-                print("📂 已安装的技能:")
-                for skill in skills:
-                    print(f"  📦 {skill['name']} v{skill['version']}")
-                    print(f"     {skill['description']}")
-                    if 'author' in skill:
-                        print(f"     作者: {skill['author']}")
-                    print()
-            sys.exit(0)
-            
+    elif first_arg == 'install':
+        # 安装技能
+        if len(args) < 2:
+            print("❌ install指令需要提供技能URL")
+            print("Usage: llmi install <skill_url>")
+            sys.exit(1)
+
+        skill_url = args[1]
+        success = install_skill_from_url(skill_url)
+        sys.exit(0 if success else 1)
+
+    elif first_arg == 'list':
+        # 列出已安装的技能
+        skills = list_skills()
+        if not skills:
+            print("📂 暂无已安装的技能")
+            print("使用 'llmi install <url>' 安装技能")
         else:
-            # 执行技能
-            skill_name = first_arg
-            skill_args = args[1:] if len(args) > 1 else []
-            
-            # 检查技能是否存在
-            if not load_skill(skill_name):
-                print(f"❌ 技能 '{skill_name}' 不存在")
-                print("使用 'llmi list' 查看已安装的技能")
-                print("使用 'llmi install <url>' 安装新技能")
-                sys.exit(1)
-            
-            # 执行技能
-            success = execute_skill(skill_name, skill_args)
-            sys.exit(0 if success else 1)
+            print("📂 已安装的技能:")
+            for skill in skills:
+                print(f"  📦 {skill['name']} v{skill['version']}")
+                print(f"     {skill['description']}")
+                if 'author' in skill:
+                    print(f"     作者: {skill['author']}")
+                print()
+        sys.exit(0)
+
+    elif load_skill(first_arg):
+        # 执行已安装的技能
+        skill_name = first_arg
+        skill_args = args[1:] if len(args) > 1 else []
+
+        success = execute_skill(skill_name, skill_args)
+        sys.exit(0 if success else 1)
             
     else:
         # 默认行为：将所有参数作为问题处理
