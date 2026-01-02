@@ -12,6 +12,113 @@ import subprocess
 import requests
 from openai import OpenAI
 from pathlib import Path
+import time
+
+
+import sqlite3
+import datetime
+import uuid
+
+# --- Context Management ---
+
+class ContextManager:
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.cache_dir = Path(os.path.expanduser("~/.cache/llmi/sessions"))
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.history_file = self.cache_dir / f"{session_id}.json"
+        self.max_history = 20  # Keep last 20 messages (10 interactions)
+
+    def load_history(self) -> list:
+        if not self.history_file.exists():
+            return []
+        try:
+            with open(self.history_file, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+            return history
+        except Exception:
+            return []
+
+    def save_history(self, messages: list):
+        # Filter out system messages to avoid duplication if we re-construct context
+        # But actually we want to store user and assistant messages.
+        # We'll expect 'messages' to be the full list, so we slice or filter.
+        
+        # Strategy: Store only User and Assistant messages.
+        history_to_save = [m for m in messages if m['role'] in ('user', 'assistant')]
+        
+        # Truncate
+        if len(history_to_save) > self.max_history:
+            history_to_save = history_to_save[-self.max_history:]
+            
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(history_to_save, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            # Silently fail or log debug
+            pass
+
+    def clear_history(self):
+        if self.history_file.exists():
+            try:
+                self.history_file.unlink()
+                print("🧹 Context cleared.")
+            except Exception as e:
+                print(f"❌ Failed to clear context: {e}")
+
+# --- Terminal Reading ---
+
+class TerminalReader:
+    @staticmethod
+    def get_content(lines: int = 100) -> str:
+        """
+        Attempts to read the content of the current terminal window.
+        Supports: macOS (Apple Terminal, iTerm2).
+        """
+        if sys.platform != 'darwin':
+            return None
+
+        term_program = os.environ.get('TERM_PROGRAM', '')
+        
+        script = None
+        if term_program == 'Apple_Terminal':
+            script = f'''
+            tell application "Terminal"
+                if not (exists window 1) then return ""
+                tell selected tab of window 1
+                    get contents of history
+                end tell
+            end tell
+            '''
+        elif term_program == 'iTerm.app':
+            script = f'''
+            tell application "iTerm"
+                if not (exists window 1) then return ""
+                tell current session of current window
+                    get contents
+                end tell
+            end tell
+            '''
+        
+        if not script:
+            # Fallback or unsupported terminal
+            return None
+            
+        try:
+            # Run AppleScript
+            result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
+            if result.returncode != 0:
+                return None
+            
+            content = result.stdout.strip()
+            # Get last N lines
+            content_lines = content.splitlines()
+            if len(content_lines) > lines:
+                content_lines = content_lines[-lines:]
+            
+            return "\n".join(content_lines)
+        except Exception:
+            return None
 
 
 def read_file_content(file_path: str) -> dict:
@@ -70,7 +177,7 @@ def get_shell_info():
     }
 
 
-def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict = None) -> list:
+def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict = None, terminal_context: str = None) -> list:
     """
     创建结构化的提示信息
     要求LLM以特定格式返回可直接使用的命令
@@ -97,6 +204,16 @@ def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict 
         
         system_prompt += file_info_text
     
+
+    if terminal_context:
+        system_prompt += f"""
+
+Terminal Output Context (Last 100 lines):
+----------------------------------------
+{terminal_context}
+----------------------------------------
+"""
+
     system_prompt += """
 
 如果用户的问题是关于如何输入bash/zsh命令的，你必须以以下格式返回可以直接使用的命令:
@@ -108,6 +225,7 @@ def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict 
 
 要求:
 1. 对于需要命令的问答，必须使用上面的格式将命令包裹在```command代码块中。
+2. 你可以参考Terminal Output Context中的内容来分析报错或执行结果。
 
 示例:
 用户: "怎么列出当前目录下的所有文件,并且能看到每个文件的扩展名和文件大小?"
@@ -501,6 +619,9 @@ Skills:
         print("  技能加载失败")
 
 
+
+
+
 def main():
     import sys
     
@@ -569,6 +690,16 @@ def main():
                 print()
         sys.exit(0)
 
+    elif first_arg == 'reset':
+        # 清除上下文
+        session_id = os.environ.get('LLMI_SESSION_ID')
+        if session_id:
+            ctx_mgr = ContextManager(session_id)
+            ctx_mgr.clear_history()
+        else:
+            print("⚠️ 未找到会话ID")
+        sys.exit(0)
+
     elif load_skill(first_arg):
         # 执行已安装的技能
         skill_name = first_arg
@@ -602,6 +733,42 @@ def main():
     # 获取shell信息
     shell_info = get_shell_info()
     
+    # Context Management
+    session_id = os.environ.get('LLMI_SESSION_ID')
+    history = []
+    ctx_mgr = None
+    
+    if session_id:
+        ctx_mgr = ContextManager(session_id)
+        history = ctx_mgr.load_history()
+        if history:
+            print(f"📜 已加载上下文 ({len(history)} 条消息)")
+    
+    # Terminal Content Reading Logic
+    terminal_context = None
+    # Keywords that might trigger terminal reading
+    trigger_keywords = ['报错', '错误', 'error', 'output', '输出', 'log', '日志', '分析', 'analyze', 'check', '上面', 'above', 'prev', '之前']
+    # A simple scoring or intersection check. If user says "analyze error" or "what is the error above"
+    user_input_lower = user_input.lower()
+    
+    should_read_terminal = False
+    
+    # Check explicit triggers
+    if any(k in user_input_lower for k in ['analyze error', '分析报错', 'look at error', 'check error', 'read terminal', 'output above', '上面输出']):
+        should_read_terminal = True
+    elif 'above' in user_input_lower or '上面' in user_input_lower:
+        if any(k in user_input_lower for k in ['error', 'log', 'output', 'what', 'analyze', 'explain', 'mistake', 'fail']):
+            should_read_terminal = True
+            
+    if should_read_terminal:
+        print("👀 正在读取终端内容...")
+        content = TerminalReader.get_content()
+        if content:
+            terminal_context = content
+            print(f"✅ 已获取终端内容 ({len(content.splitlines())} 行)")
+        else:
+            print("⚠️ 无法获取终端内容 (可能不支持当前终端或权限不足)")
+
     # 处理文件附件
     file_info = None
     if file_path:
@@ -613,15 +780,23 @@ def main():
         print(f"✅ 文件读取成功: {file_info['filename']} ({file_info['size']} bytes)")
         print()
 
-    # 创建结构化提示
-    messages = create_structured_prompt(user_input, shell_info, file_info)
+    # 创建结构化提示 (Base prompts)
+    # create_structured_prompt returns [System, User]
+    base_messages = create_structured_prompt(user_input, shell_info, file_info, terminal_context)
+    
+    # Re-assemble messages with history
+    # [System] + [History (User/Assistant)] + [Current User]
+    
+    final_messages = [base_messages[0]] # System prompt
+    final_messages.extend(history)
+    final_messages.append(base_messages[1]) # Current User prompt
 
     # 确保环境
     ensure_llm_env()
 
     # 调用LLM
     print("🧠 正在思考...")
-    llm_response = call_llm(messages)
+    llm_response = call_llm(final_messages)
 
     if llm_response.startswith("Error"):
         print(f"{llm_response}")
@@ -633,6 +808,12 @@ def main():
     print("\n💡 LLM回答:")
     print(llm_response)
     print()
+
+    # Save to history
+    if ctx_mgr:
+        # Append current interaction
+        new_history = history + [base_messages[1], {"role": "assistant", "content": llm_response}]
+        ctx_mgr.save_history(new_history)
 
     # 如果有命令，提示用户可以使用
     if command:

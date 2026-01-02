@@ -9,6 +9,11 @@ LLMI_CACHE_DIR=${LLMI_CACHE_DIR:-$HOME/.cache/llmi}
 typeset -g LLMI_LAST_CMD
 LLMI_LAST_CMD="$LLMI_CACHE_DIR/last_command"
 
+# Export session ID for context sharing context between llmi calls
+if [[ -z "$LLMI_SESSION_ID" ]]; then
+  export LLMI_SESSION_ID="$$"
+fi
+
 function llmi-insert-or-complete() {
   # If line buffer is empty and we have a cached command, insert it; otherwise, do normal completion
   if [[ -z "$BUFFER" && -r "$LLMI_LAST_CMD" ]]; then

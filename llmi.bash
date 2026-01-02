@@ -7,6 +7,11 @@ __llmi_cache_file() {
   echo "$dir/last_command"
 }
 
+# Export session ID for context sharing context between llmi calls
+if [[ -z "$LLMI_SESSION_ID" ]]; then
+  export LLMI_SESSION_ID="$$"
+fi
+
 __llmi_insert_or_tab() {
   # Only handle when line is empty; otherwise fall back to default by inserting a literal tab
   if [[ -z "${READLINE_LINE:-}" ]]; then
