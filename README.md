@@ -65,6 +65,8 @@ llmi ask "分析错误日志" -f /var/log/error.log
 - **Base64 encoding** for binary file handling
 - **Skill system** - extensible plugin architecture for custom commands
 - **One-click install** skills from GitHub or any URL
+- **Context Awareness** - remembers conversation history in current session
+- **Terminal Integration** - auto-read output from tmux, Apple Terminal, and iTerm2
 
 ### Example Workflow
 

@@ -75,10 +75,29 @@ class TerminalReader:
         Attempts to read the content of the current terminal window.
         Supports: macOS (Apple Terminal, iTerm2).
         """
-        if sys.platform != 'darwin':
-            return None
+        # 1. Try tmux (Cross-platform)
+        if os.environ.get('TMUX'):
+            try:
+                # Capture last N lines (-S -N)
+                result = subprocess.run(
+                    ['tmux', 'capture-pane', '-p', '-S', f'-{lines}'],
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0:
+                    return result.stdout.strip()
+            except Exception:
+                pass
 
         term_program = os.environ.get('TERM_PROGRAM', '')
+        
+        # 2. Check for VSCode (Explicitly unsupported via API)
+        if term_program == 'vscode':
+            print("⚠️ VSCode 内置终端暂不支持自动读取 (受限于安全沙箱)，请手动复制报错信息")
+            return None
+
+        # 3. macOS Automation (Apple Terminal, iTerm2)
+        if sys.platform != 'darwin':
+            return None
         
         script = None
         if term_program == 'Apple_Terminal':
@@ -746,20 +765,40 @@ def main():
     
     # Terminal Content Reading Logic
     terminal_context = None
-    # Keywords that might trigger terminal reading
-    trigger_keywords = ['报错', '错误', 'error', 'output', '输出', 'log', '日志', '分析', 'analyze', 'check', '上面', 'above', 'prev', '之前']
-    # A simple scoring or intersection check. If user says "analyze error" or "what is the error above"
-    user_input_lower = user_input.lower()
     
+    # 触发词逻辑优化
+    user_input_lower = user_input.lower()
     should_read_terminal = False
     
-    # Check explicit triggers
-    if any(k in user_input_lower for k in ['analyze error', '分析报错', 'look at error', 'check error', 'read terminal', 'output above', '上面输出']):
+    # 核心关键词
+    error_keywords = ['报错', '错误', 'error', 'exception', 'fail', 'failed']
+    target_keywords = ['output', '输出', 'log', '日志', 'content', '内容']
+    
+    # 方位/时间关键词
+    position_keywords = ['上面', 'above', 'prev', '之前', '刚才', '刚刚', 'last', 'recent', 'up', 'previous', '这个']
+    
+    # 动作关键词
+    action_keywords = ['分析', 'analyze', 'check', '看', '解释', 'explain', 'fix', 'solve', '解决', '什么意思', 'mean']
+
+    # 组合判断
+    has_error_kw = any(k in user_input_lower for k in error_keywords)
+    has_target_kw = any(k in user_input_lower for k in target_keywords)
+    has_pos_kw = any(k in user_input_lower for k in position_keywords)
+    has_action_kw = any(k in user_input_lower for k in action_keywords)
+
+    # 规则 1: 明确的“分析报错”、“看报错”等
+    # (关键词 "分析/看" + "报错/错误")
+    if has_error_kw and (has_action_kw or has_pos_kw):
         should_read_terminal = True
-    elif 'above' in user_input_lower or '上面' in user_input_lower:
-        if any(k in user_input_lower for k in ['error', 'log', 'output', 'what', 'analyze', 'explain', 'mistake', 'fail']):
-            should_read_terminal = True
-            
+        
+    # 规则 2: 方位词 + 目标词 (e.g. "上面的输出", "刚才的日志")
+    elif has_pos_kw and has_target_kw:
+        should_read_terminal = True
+        
+    # 规则 3: 特定的强触发短语
+    elif any(phrase in user_input_lower for phrase in ['read terminal', '读取终端', 'output above']):
+        should_read_terminal = True
+
     if should_read_terminal:
         print("👀 正在读取终端内容...")
         content = TerminalReader.get_content()
