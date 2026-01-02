@@ -104,9 +104,14 @@ class TerminalReader:
             script = f'''
             tell application "Terminal"
                 if not (exists window 1) then return ""
-                tell selected tab of window 1
-                    get contents of history
-                end tell
+                try
+                    -- Try newer/cleaner syntax first for history
+                    set termHistory to history of selected tab of front window
+                    return termHistory
+                on error
+                    -- Fallback to contents if history fails (some older versions)
+                    return contents of selected tab of front window
+                end try
             end tell
             '''
         elif term_program == 'iTerm.app':
@@ -127,16 +132,23 @@ class TerminalReader:
             # Run AppleScript
             result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
             if result.returncode != 0:
+                # Debug info only if failed
+                sys.stderr.write(f"⚠️ AppleScript Error: {result.stderr.strip()}\n")
                 return None
             
             content = result.stdout.strip()
+            # If content is empty but success, it might be weird
+            if not content:
+                return None
+                
             # Get last N lines
             content_lines = content.splitlines()
             if len(content_lines) > lines:
                 content_lines = content_lines[-lines:]
             
             return "\n".join(content_lines)
-        except Exception:
+        except Exception as e:
+            sys.stderr.write(f"⚠️ Terminal Reader Error: {e}\n")
             return None
 
 
