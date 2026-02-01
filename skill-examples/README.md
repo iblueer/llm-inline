@@ -73,6 +73,59 @@ llmi prompt-engineer "一个美丽的女孩，穿着红色的裙子，在花园�
 llmi prompt-engineer "一只可爱的白色猫咪\n坐在柔软的垫子上\n阳光从窗户洒进来\n温馨的家庭氛围"
 ```
 
+## genimage 技能示例
+
+`genimage/` 目录是一个图像生成技能示例，使用llm-switch的`visionuse`设置的Vision模型（如gemini-3-pro-image）：
+
+### 功能说明
+该技能调用Vision模型生成图像，支持传入比例参数来控制生成图像的尺寸。
+
+### 前置条件
+使用此技能前，需要先使用`llm-switch visionuse`命令设置Vision模型环境：
+```bash
+# 设置Vision模型环境（假设你有gemini环境配置）
+llm-switch visionuse gemini
+```
+
+### 安装示例
+```bash
+# 从本目录安装（测试用）
+llmi install file:///path/to/llm-inline/skill-examples/genimage/skill.json
+
+# 从GitHub安装（生产用）
+llmi install https://raw.githubusercontent.com/iblueer/llm-inline/main/skill-examples/genimage/skill.json
+```
+
+### 使用方法
+```bash
+# 生成1:1比例图像（默认）
+llmi genimage "一只可爱的橘猫在阳光下打盹"
+
+# 生成16:9比例图像
+llmi genimage "一片宁静的海滩日落" 16:9
+
+# 生成9:16比例图像（竖屏）
+llmi genimage "一朵盛开的红玫瑰特写" 9:16
+
+# 生成4:3比例图像
+llmi genimage "山间小屋的温馨夜景" 4:3
+
+# 指定输出路径
+llmi genimage "星空下的城市天际线" 16:9 ~/Pictures/starry_city.png
+```
+
+### 支持的比例参数
+| 比例 | 尺寸 | 说明 |
+|------|------|------|
+| 1:1 | 1024x1024 | 正方形（默认）|
+| 16:9 | 1280x720 | 横屏宽幅 |
+| 9:16 | 720x1280 | 竖屏手机屏 |
+| 4:3 | 1216x896 | 传统相机比例 |
+| 3:4 | 896x1216 | 竖向传统比例 |
+
+也可以直接传入尺寸格式，如 `1024x1024`。
+
+
 ### 处理规则
 该技能严格遵循以下规则：
 1. **不新增**任何用户未明确提出的设计要素

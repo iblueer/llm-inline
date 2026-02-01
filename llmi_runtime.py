@@ -141,3 +141,108 @@ def get_file_content(arg_value) -> dict:
         'content': content,
         'is_binary': is_binary
     }
+
+
+class VisionLLMRuntime:
+    """Vision LLM运行时环境，使用LLM_VISION_*环境变量"""
+    
+    def __init__(self):
+        """初始化Vision LLM客户端，使用llm-switch的Vision环境变量"""
+        # 优先使用VISION专属变量，否则回退到通用变量
+        api_key = os.environ.get('LLM_VISION_API_KEY') or os.environ.get('LLM_API_KEY')
+        base_url = os.environ.get('LLM_VISION_BASE_URL') or os.environ.get('LLM_BASE_URL')
+        model_name = os.environ.get('LLM_VISION_MODEL_NAME') or os.environ.get('LLM_VISION_MODEL') or os.environ.get('LLM_MODEL_NAME', 'gemini-3-pro-image')
+        
+        if not api_key or not base_url:
+            raise ValueError("❌ 缺少Vision LLM环境变量，请先运行: llm-switch visionuse <name>")
+        
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.model_name = model_name
+    
+    def generate_image(self, prompt: str, size: str = "1024x1024", **kwargs) -> dict:
+        """
+        调用Vision模型生成图像
+        
+        Args:
+            prompt: 图像生成提示词
+            size: 图像尺寸 (如: "1024x1024", "1280x720")
+            **kwargs: 其他参数
+            
+        Returns:
+            包含生成结果的字典
+        """
+        # 默认参数
+        default_params = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 4000,
+        }
+        
+        # 添加size参数到extra_body
+        extra_body = kwargs.pop('extra_body', {})
+        extra_body['size'] = size
+        default_params['extra_body'] = extra_body
+        
+        # 合并用户参数
+        default_params.update(kwargs)
+        
+        try:
+            response = self.client.chat.completions.create(**default_params)
+            content = response.choices[0].message.content
+            
+            # 返回结果
+            return {
+                'content': content,
+                'model': self.model_name,
+                'size': size
+            }
+        except Exception as e:
+            return {
+                'error': str(e)
+            }
+
+
+# 全局Vision LLM运行时实例
+_vision_llm_runtime = None
+
+
+def get_vision_llm_runtime() -> VisionLLMRuntime:
+    """获取全局Vision LLM运行时实例（单例模式）"""
+    global _vision_llm_runtime
+    if _vision_llm_runtime is None:
+        _vision_llm_runtime = VisionLLMRuntime()
+    return _vision_llm_runtime
+
+
+def vision_call_llm(prompt: str, size: str = "1024x1024", **kwargs) -> dict:
+    """
+    技能调用Vision LLM的简化接口
+    
+    使用llm-switch的visionuse命令设置的环境变量
+    
+    Args:
+        prompt: 图像生成提示词
+        size: 图像尺寸，支持:
+              - "1024x1024" (1:1)
+              - "1280x720" (16:9)
+              - "720x1280" (9:16)
+              - "1216x896" (4:3)
+        **kwargs: 其他参数
+        
+    Returns:
+        包含生成结果的字典，可能包含:
+        - content: 模型返回的内容
+        - image_data: Base64编码的图像数据
+        - image_url: 图像URL
+        - error: 错误信息
+    """
+    runtime = get_vision_llm_runtime()
+    return runtime.generate_image(prompt, size, **kwargs)
+
+
+def check_vision_llm_env() -> bool:
+    """检查Vision LLM环境是否配置"""
+    # 检查Vision专属变量或通用变量
+    has_vision = bool(os.environ.get('LLM_VISION_API_KEY') and os.environ.get('LLM_VISION_BASE_URL'))
+    has_general = bool(os.environ.get('LLM_API_KEY') and os.environ.get('LLM_BASE_URL'))
+    return has_vision or has_general

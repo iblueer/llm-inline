@@ -1,0 +1,26 @@
+{
+    "name": "genimage",
+    "description": "使用Vision模型(如gemini-3-pro-image)生成图像",
+    "version": "1.0.0",
+    "author": "llmi-example",
+    "parameters": [
+        {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "description": "图像生成提示词"
+        },
+        {
+            "name": "ratio",
+            "type": "string",
+            "default": "1:1",
+            "description": "图像比例 (如: 1:1, 16:9, 9:16, 4:3, 3:4)"
+        },
+        {
+            "name": "output",
+            "type": "string",
+            "description": "输出文件路径 (默认: 当前目录/generated_时间戳.png)"
+        }
+    ],
+    "handler": "genimage.py"
+}
