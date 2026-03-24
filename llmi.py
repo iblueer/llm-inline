@@ -215,7 +215,7 @@ def create_structured_prompt(user_input: str, shell_info: dict, file_info: dict 
     """
     
     # 构建系统提示
-    system_prompt = f"""你是一个命令行助手，帮助用户解决shell命令相关问题。
+    system_prompt = f"""你是一个命令行助手。用户在命令行环境中与你对话，不要发散性的考虑问题，简单直白的回答，不说废话。
 
 当前环境:
 - Shell: {shell_info['shell']}
